@@ -1,0 +1,16 @@
+:root {
+  --bg: #0b0b0b;
+  --fg: #f0f0eb;
+  --muted: #858582;
+  --border: rgb(240 240 235 / 16%);
+  --border-strong: rgb(240 240 235 / 42%);
+  --grid-line: rgb(240 240 235 / 4.5%);
+  --accent: #c7ff4a;
+  --font-sans: "Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --space-xs: 0.5rem;
+  --space-sm: 1rem;
+  --space-md: clamp(1.25rem, 2.3vw, 2.5rem);
+  --page-pad: clamp(1rem, 2.1vw, 2.5rem);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
