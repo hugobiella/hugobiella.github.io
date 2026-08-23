@@ -2,9 +2,8 @@ import './styles.css';
 import { initAsciiField } from './effects/ascii-field';
 
 const bootCount = document.querySelector<HTMLOutputElement>('[data-boot-count]');
-const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-if (bootCount && !reduceMotion) {
+if (bootCount) {
   const startedAt = performance.now();
   const duration = 1620;
 
@@ -20,8 +19,6 @@ if (bootCount && !reduceMotion) {
   };
 
   requestAnimationFrame(updateCount);
-} else if (bootCount) {
-  bootCount.value = '100';
 }
 
 const asciiCanvas = document.querySelector<HTMLCanvasElement>('[data-ascii-field]');

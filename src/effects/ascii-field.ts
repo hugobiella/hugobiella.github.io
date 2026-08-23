@@ -35,7 +35,6 @@ export const initAsciiField = (canvas: HTMLCanvasElement): void => {
 
   if (!context) return;
 
-  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   const mobileViewport = window.matchMedia('(max-width: 760px)');
   const rootStyles = getComputedStyle(document.documentElement);
   const foreground = rootStyles.getPropertyValue('--fg').trim();
@@ -199,7 +198,7 @@ export const initAsciiField = (canvas: HTMLCanvasElement): void => {
 
     draw();
 
-    if (visible && !document.hidden && !reduceMotion.matches && !mobileViewport.matches) {
+    if (visible && !document.hidden && !mobileViewport.matches) {
       animationFrame = requestAnimationFrame(update);
     }
   };
@@ -207,7 +206,7 @@ export const initAsciiField = (canvas: HTMLCanvasElement): void => {
   const start = (): void => {
     cancelAnimationFrame(animationFrame);
 
-    if (reduceMotion.matches || mobileViewport.matches || !visible || document.hidden) {
+    if (mobileViewport.matches || !visible || document.hidden) {
       draw();
       return;
     }
@@ -245,7 +244,6 @@ export const initAsciiField = (canvas: HTMLCanvasElement): void => {
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
   });
   document.addEventListener('visibilitychange', start);
-  reduceMotion.addEventListener('change', start);
   mobileViewport.addEventListener('change', start);
   resizeObserver.observe(canvas);
   visibilityObserver.observe(canvas);
