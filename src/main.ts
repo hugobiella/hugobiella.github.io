@@ -11,7 +11,9 @@ if (bootCount && !reduceMotion) {
     const progress = Math.min((now - startedAt) / duration, 1);
     const easedProgress = 1 - Math.pow(1 - progress, 3);
 
-    bootCount.value = Math.round(easedProgress * 100).toString().padStart(3, '0');
+    bootCount.value = Math.round(easedProgress * 100)
+      .toString()
+      .padStart(3, '0');
 
     if (progress < 1) requestAnimationFrame(updateCount);
   };
