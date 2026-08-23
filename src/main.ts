@@ -5,7 +5,7 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').match
 
 if (bootCount && !reduceMotion) {
   const startedAt = performance.now();
-  const duration = 620;
+  const duration = 1620;
 
   const updateCount = (now: number): void => {
     const progress = Math.min((now - startedAt) / duration, 1);

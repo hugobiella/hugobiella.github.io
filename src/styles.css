@@ -178,7 +178,7 @@ main {
 
 .title-line > span {
   display: block;
-  animation: title-reveal 900ms var(--ease-out) 740ms both;
+  animation: title-reveal 900ms var(--ease-out) 1740ms both;
 }
 
 .title-line--second {
@@ -187,7 +187,7 @@ main {
 }
 
 .title-line--second > span {
-  animation-delay: 820ms;
+  animation-delay: 1820ms;
 }
 
 .hero__title sup {
@@ -265,16 +265,16 @@ main {
   animation: reveal 520ms var(--ease-out) both;
 }
 .reveal--1 {
-  animation-delay: 680ms;
+  animation-delay: 1680ms;
 }
 .reveal--2 {
-  animation-delay: 800ms;
+  animation-delay: 1800ms;
 }
 .reveal--4 {
-  animation-delay: 980ms;
+  animation-delay: 1980ms;
 }
 .reveal--5 {
-  animation-delay: 1080ms;
+  animation-delay: 2080ms;
 }
 
 .boot-screen {
@@ -287,7 +287,7 @@ main {
   align-items: end;
   gap: var(--space-md);
   padding: var(--page-pad);
-  animation: boot-exit 260ms var(--ease-out) 650ms forwards;
+  animation: boot-exit 260ms var(--ease-out) 1650ms forwards;
   background: var(--fg);
   color: var(--bg);
   font: 600 0.7rem/1 var(--font-mono);
@@ -312,7 +312,7 @@ main {
   width: 100%;
   height: 100%;
   transform-origin: left;
-  animation: boot-progress 620ms var(--ease-out) both;
+  animation: boot-progress 1620ms var(--ease-out) both;
   background: var(--bg);
 }
 

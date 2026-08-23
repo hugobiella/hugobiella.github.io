@@ -23,6 +23,8 @@ O resultado de produção é gerado em `dist/`.
 
 ## GitHub Pages
 
-O workflow `.github/workflows/deploy.yml` faz build e publica o conteúdo de `dist/`
-automaticamente após cada push para `main`. Nas configurações do repositório, em
-**Settings → Pages → Build and deployment**, selecione **GitHub Actions** como source.
+O workflow `.github/workflows/deploy.yml` valida e compila o projeto após cada push para
+`main`. Somente o conteúdo gerado em `dist/` é publicado na branch órfã `gh-pages`.
+
+Após a primeira execução do workflow, configure o repositório em **Settings → Pages → Build
+and deployment** com **Deploy from a branch**, branch **gh-pages** e diretório **/(root)**.
