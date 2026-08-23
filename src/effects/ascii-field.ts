@@ -20,6 +20,7 @@ type PointerState = {
 
 const GLYPH_RAMP = ['·', ':', '+', '=', '*', '#', '@'];
 const TAU = Math.PI * 2;
+const POINTER_RADIUS = 112;
 
 const clamp = (value: number, minimum: number, maximum: number): number =>
   Math.min(Math.max(value, minimum), maximum);
@@ -161,36 +162,35 @@ export const initAsciiField = (canvas: HTMLCanvasElement): void => {
   const update = (time: number): void => {
     const delta = clamp((time - previousTime) / 16.67, 0.25, 2);
     const suctionActive = pointer.pressed || time < pointer.suctionUntil;
-    const influenceRadius = suctionActive ? Math.max(width, height) * 0.62 : 112;
 
     previousTime = time;
 
     for (const glyph of glyphs) {
-      const spring = suctionActive ? 0.003 : 0.026;
+      const offsetX = glyph.x - pointer.x;
+      const offsetY = glyph.y - pointer.y;
+      const distance = Math.max(Math.hypot(offsetX, offsetY), 1);
+      const insidePointerArea = pointer.inside && distance < POINTER_RADIUS;
+      const localSuction = suctionActive && insidePointerArea;
+      const spring = localSuction ? 0.003 : 0.026;
+
       glyph.velocityX += (glyph.homeX - glyph.x) * spring * delta;
       glyph.velocityY += (glyph.homeY - glyph.y) * spring * delta;
 
-      if (pointer.inside) {
-        const offsetX = glyph.x - pointer.x;
-        const offsetY = glyph.y - pointer.y;
-        const distance = Math.max(Math.hypot(offsetX, offsetY), 1);
+      if (insidePointerArea) {
+        const falloff = 1 - distance / POINTER_RADIUS;
 
-        if (distance < influenceRadius) {
-          const falloff = 1 - distance / influenceRadius;
-
-          if (suctionActive) {
-            const pull = falloff * 0.014 * delta;
-            glyph.velocityX -= offsetX * pull;
-            glyph.velocityY -= offsetY * pull;
-          } else {
-            const push = falloff ** 2 * 2.1 * delta;
-            glyph.velocityX += (offsetX / distance) * push;
-            glyph.velocityY += (offsetY / distance) * push;
-          }
+        if (localSuction) {
+          const pull = falloff * 0.014 * delta;
+          glyph.velocityX -= offsetX * pull;
+          glyph.velocityY -= offsetY * pull;
+        } else {
+          const push = falloff ** 2 * 2.1 * delta;
+          glyph.velocityX += (offsetX / distance) * push;
+          glyph.velocityY += (offsetY / distance) * push;
         }
       }
 
-      const damping = suctionActive ? 0.84 : 0.88;
+      const damping = localSuction ? 0.84 : 0.88;
       glyph.velocityX *= damping ** delta;
       glyph.velocityY *= damping ** delta;
       glyph.x += glyph.velocityX * delta;
@@ -229,12 +229,16 @@ export const initAsciiField = (canvas: HTMLCanvasElement): void => {
     pointer.pressed = false;
   });
   canvas.addEventListener('pointerdown', (event) => {
+    if (!event.isPrimary || event.button !== 0) return;
+
     updatePointer(event);
     pointer.pressed = true;
     pointer.suctionUntil = performance.now() + 720;
     canvas.setPointerCapture(event.pointerId);
   });
   canvas.addEventListener('pointerup', (event) => {
+    if (!event.isPrimary || event.button !== 0) return;
+
     pointer.pressed = false;
     pointer.suctionUntil = performance.now() + 520;
 

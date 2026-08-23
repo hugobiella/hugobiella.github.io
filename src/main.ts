@@ -27,3 +27,5 @@ if (bootCount && !reduceMotion) {
 const asciiCanvas = document.querySelector<HTMLCanvasElement>('[data-ascii-field]');
 
 if (asciiCanvas) initAsciiField(asciiCanvas);
+
+document.addEventListener('contextmenu', (event) => event.preventDefault());
