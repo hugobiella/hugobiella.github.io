@@ -15,12 +15,19 @@ type PointerState = {
   y: number;
   inside: boolean;
   pressed: boolean;
-  suctionUntil: number;
+  quickPulseUntil: number;
+  returnBoostUntil: number;
+  suctionRadius: number;
 };
 
 const GLYPH_RAMP = ['·', ':', '+', '=', '*', '#', '@'];
 const TAU = Math.PI * 2;
 const POINTER_RADIUS = 112;
+const CLICK_RADIUS_STEP = 25;
+const MAX_CLICK_RADIUS = 300;
+const CLICK_SEQUENCE_WINDOW = 1000;
+const QUICK_CLICK_DURATION = 180;
+const QUICK_PULSE_DURATION = 200;
 
 const clamp = (value: number, minimum: number, maximum: number): number =>
   Math.min(Math.max(value, minimum), maximum);
@@ -45,7 +52,9 @@ export const initAsciiField = (canvas: HTMLCanvasElement): void => {
     y: 0,
     inside: false,
     pressed: false,
-    suctionUntil: 0,
+    quickPulseUntil: 0,
+    returnBoostUntil: 0,
+    suctionRadius: POINTER_RADIUS,
   };
 
   let glyphs: Glyph[] = [];
@@ -54,6 +63,11 @@ export const initAsciiField = (canvas: HTMLCanvasElement): void => {
   let fontSize = 10;
   let animationFrame = 0;
   let previousTime = performance.now();
+  let pressStartedAt = 0;
+  let quickReleaseTimer: number | undefined;
+  let clickSequenceResetTimer: number | undefined;
+  let consecutiveClicks = 0;
+  let lastQuickClickAt = 0;
   let visible = true;
 
   const buildSphere = (): void => {
@@ -158,9 +172,34 @@ export const initAsciiField = (canvas: HTMLCanvasElement): void => {
     pointer.inside = true;
   };
 
+  const resetClickSequence = (): void => {
+    if (clickSequenceResetTimer !== undefined) window.clearTimeout(clickSequenceResetTimer);
+
+    clickSequenceResetTimer = undefined;
+    consecutiveClicks = 0;
+    lastQuickClickAt = 0;
+    pointer.suctionRadius = POINTER_RADIUS;
+  };
+
+  const releaseSuction = (fastReturn = false, releaseRadius = POINTER_RADIUS): void => {
+    pointer.pressed = false;
+    pointer.quickPulseUntil = 0;
+    pointer.returnBoostUntil = fastReturn ? performance.now() + 280 : 0;
+
+    for (const glyph of glyphs) {
+      if (Math.hypot(glyph.x - pointer.x, glyph.y - pointer.y) >= releaseRadius) continue;
+
+      glyph.velocityX = 0;
+      glyph.velocityY = 0;
+    }
+  };
+
   const update = (time: number): void => {
     const delta = clamp((time - previousTime) / 16.67, 0.25, 2);
-    const suctionActive = pointer.pressed || time < pointer.suctionUntil;
+    const suctionActive = pointer.pressed;
+    const quickPulseActive = suctionActive && time < pointer.quickPulseUntil;
+    const returnBoostActive = time < pointer.returnBoostUntil;
+    const activeRadius = quickPulseActive ? pointer.suctionRadius : POINTER_RADIUS;
 
     previousTime = time;
 
@@ -168,18 +207,19 @@ export const initAsciiField = (canvas: HTMLCanvasElement): void => {
       const offsetX = glyph.x - pointer.x;
       const offsetY = glyph.y - pointer.y;
       const distance = Math.max(Math.hypot(offsetX, offsetY), 1);
-      const insidePointerArea = pointer.inside && distance < POINTER_RADIUS;
+      const insidePointerArea = pointer.inside && distance < activeRadius;
       const localSuction = suctionActive && insidePointerArea;
-      const spring = localSuction ? 0.003 : 0.026;
+      const spring = localSuction ? 0.003 : returnBoostActive ? 0.075 : 0.026;
 
       glyph.velocityX += (glyph.homeX - glyph.x) * spring * delta;
       glyph.velocityY += (glyph.homeY - glyph.y) * spring * delta;
 
       if (insidePointerArea) {
-        const falloff = 1 - distance / POINTER_RADIUS;
+        const falloff = 1 - distance / activeRadius;
 
         if (localSuction) {
-          const pull = falloff * 0.014 * delta;
+          const pullStrength = quickPulseActive ? 0.1 : 0.02;
+          const pull = falloff * pullStrength * delta;
           glyph.velocityX -= offsetX * pull;
           glyph.velocityY -= offsetY * pull;
         } else {
@@ -189,7 +229,13 @@ export const initAsciiField = (canvas: HTMLCanvasElement): void => {
         }
       }
 
-      const damping = localSuction ? 0.84 : 0.88;
+      const damping = localSuction
+        ? quickPulseActive
+          ? 0.72
+          : 0.84
+        : returnBoostActive
+          ? 0.74
+          : 0.88;
       glyph.velocityX *= damping ** delta;
       glyph.velocityY *= damping ** delta;
       glyph.x += glyph.velocityX * delta;
@@ -224,24 +270,62 @@ export const initAsciiField = (canvas: HTMLCanvasElement): void => {
   canvas.addEventListener('pointerenter', updatePointer);
   canvas.addEventListener('pointermove', updatePointer);
   canvas.addEventListener('pointerleave', () => {
+    if (quickReleaseTimer !== undefined) window.clearTimeout(quickReleaseTimer);
+
+    quickReleaseTimer = undefined;
     pointer.inside = false;
-    pointer.pressed = false;
+    releaseSuction(false, pointer.suctionRadius);
+    resetClickSequence();
   });
   canvas.addEventListener('pointerdown', (event) => {
     if (!event.isPrimary || event.button !== 0) return;
 
+    if (quickReleaseTimer !== undefined) window.clearTimeout(quickReleaseTimer);
+    if (clickSequenceResetTimer !== undefined) window.clearTimeout(clickSequenceResetTimer);
+
+    quickReleaseTimer = undefined;
+    clickSequenceResetTimer = undefined;
     updatePointer(event);
     pointer.pressed = true;
-    pointer.suctionUntil = performance.now() + 720;
+    pointer.quickPulseUntil = 0;
+    pointer.returnBoostUntil = 0;
+    pressStartedAt = performance.now();
     canvas.setPointerCapture(event.pointerId);
   });
   canvas.addEventListener('pointerup', (event) => {
     if (!event.isPrimary || event.button !== 0) return;
 
-    pointer.pressed = false;
-    pointer.suctionUntil = performance.now() + 520;
+    const now = performance.now();
+    const wasQuickClick = now - pressStartedAt < QUICK_CLICK_DURATION;
+
+    if (wasQuickClick) {
+      const continuesSequence = now - lastQuickClickAt <= CLICK_SEQUENCE_WINDOW;
+
+      consecutiveClicks = continuesSequence ? consecutiveClicks + 1 : 1;
+      lastQuickClickAt = now;
+      pointer.suctionRadius = Math.min(
+        POINTER_RADIUS + (consecutiveClicks - 1) * CLICK_RADIUS_STEP,
+        MAX_CLICK_RADIUS,
+      );
+      pointer.quickPulseUntil = now + QUICK_PULSE_DURATION;
+      quickReleaseTimer = window.setTimeout(() => {
+        releaseSuction(true, pointer.suctionRadius);
+        quickReleaseTimer = undefined;
+      }, QUICK_PULSE_DURATION);
+      clickSequenceResetTimer = window.setTimeout(resetClickSequence, CLICK_SEQUENCE_WINDOW);
+    } else {
+      releaseSuction();
+      resetClickSequence();
+    }
 
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+  });
+  canvas.addEventListener('pointercancel', () => {
+    if (quickReleaseTimer !== undefined) window.clearTimeout(quickReleaseTimer);
+
+    quickReleaseTimer = undefined;
+    releaseSuction(false, pointer.suctionRadius);
+    resetClickSequence();
   });
   document.addEventListener('visibilitychange', start);
   mobileViewport.addEventListener('change', start);
